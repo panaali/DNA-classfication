@@ -35,13 +35,17 @@ class dna_tokenizer(BaseTokenizer):
     return list(t)
 
 tokenizer = Tokenizer(tok_func=dna_tokenizer, pre_rules=[], post_rules=[], special_cases=[])
+processor = [TokenizeProcessor(tokenizer=tokenizer, include_bos= False, include_eos=False), NumericalizeProcessor(max_vocab=30000)]
 
 # batch size
 bs = 64
 
-data_lm = TextLMDataBunch.from_csv(local_project_path, 'combined_train.csv',
+data_lm = TextLMDataBunch.from_csv(local_project_path, 'combined.csv',
                                    text_cols ='Text', valid_pct= 0.1, tokenizer=tokenizer,
                                    include_bos= False, include_eos=False)
+learn = language_model_learner(data_lm, AWD_LSTM, drop_mult=0.3, pretrained=False).to_fp16()
+learn.load('lm-fine-tuned-10-4')
+learn.save_encoder('lm-fine-tuned-10-4-encoder')
 
 # data_lm.train_ds[0][0].text
 
@@ -51,14 +55,19 @@ data_lm = TextLMDataBunch.from_csv(local_project_path, 'combined_train.csv',
 
 """## Create Classifier"""
 
-data_cls = TextClasDataBunch.from_csv(local_project_path, 'combined_train.csv',
-                                   text_cols ='Text', label_cols ='class', valid_pct= 0.1, tokenizer=tokenizer,
-                                   include_bos= False, include_eos=False, vocab = data_lm.vocab)
+# data_cls = TextClasDataBunch.from_csv(local_project_path, 'combined_train.csv',
+#                                    text_cols ='Text', label_cols ='class', valid_pct= 0.1, tokenizer=tokenizer,
+#                                    include_bos= False, include_eos=False, vocab = data_lm.vocab)
+data_cls = (TextList.from_csv(local_project_path, 'combined.csv', cols='Text', vocab=data_lm.vocab, processor= processor)
+                   .split_from_df(col='is_test')
+                   .label_from_df(cols='class')
+                   .databunch(bs=bs))
 
+print('data_cls validation set size', len(data_cls.valid_ds))
 # data_cls.show_batch()
 
 learn = text_classifier_learner(data_cls, AWD_LSTM, drop_mult=0.3, pretrained=False).to_fp16()
-learn.load_encoder('fine_tuned_enc')
+learn.load_encoder('lm-fine-tuned-10-4-encoder')
 
 # learn.lr_find()
 # learn.recorder.plot()
