@@ -42,7 +42,7 @@ class dna_tokenizer(BaseTokenizer):
 tokenizer = Tokenizer(tok_func=dna_tokenizer, pre_rules=[], post_rules=[], special_cases=[])
 
 # batch size
-bs = 128
+bs = 96
 
 data_lm = TextLMDataBunch.from_csv(local_project_path, 'combined.csv',
                                    text_cols ='Text', valid_pct= 0.01, tokenizer=tokenizer,
@@ -54,7 +54,7 @@ data_lm = TextLMDataBunch.from_csv(local_project_path, 'combined.csv',
 
 """## Create Language Model Learner"""
 
-learn = language_model_learner(data_lm, TransformerXL, drop_mult=0.3, pretrained=False).to_fp16()
+learn = language_model_learner(data_lm, TransformerXL, drop_mult=0.3, pretrained=False)#.to_fp16()
 # from fastai.callbacks.misc import StopAfterNBatches
 # learn.callbacks.append(StopAfterNBatches(n_batches=2))
 
@@ -64,16 +64,16 @@ learn = language_model_learner(data_lm, TransformerXL, drop_mult=0.3, pretrained
 # learn.lr_find()
 # learn.recorder.plot(skip_end = 15)
 
-learn.fit_one_cycle(1, 1e-2, moms=(0.8,0.7))
-learn.save('lm-first-transformer-a2')
+learn.fit_one_cycle(1, 1e-4, moms=(0.8,0.7))
+learn.save('lm-first-transformer-a4')
 
 learn.unfreeze()
 
-learn.fit_one_cycle(1, 1e-3, moms=(0.8,0.7))
-learn.save('lm-fine-tuned-transformer-10-1-1_a2')
+learn.fit_one_cycle(1, 1e-4, moms=(0.8,0.7))
+learn.save('lm-fine-tuned-transformer-10-1-1_a4')
 
-learn.fit_one_cycle(1, 1e-3, moms=(0.8,0.7))
-learn.save('lm-fine-tuned-transformer-10-1-2_a2')
+learn.fit_one_cycle(8, 1e-4, moms=(0.8,0.7))
+learn.save('lm-fine-tuned-transformer-10-1-2_a4')
 
 # learn.fit_one_cycle(7, 1e-3, moms=(0.8,0.7))
 # learn.save('lm-fine-tuned-transformer-10-1-3')
